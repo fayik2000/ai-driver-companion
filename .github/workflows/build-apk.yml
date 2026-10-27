@@ -1,0 +1,70 @@
+.github/workflows/build-apk.ymlname: Build APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Siapkan proyek Android
+        run: |
+          if [ ! -d android ]; then
+            flutter create --platforms=android --org id.aidriver --project-name ai_driver_companion .
+          fi
+          bash tool/patch_android.sh
+
+      - name: Ambil paket
+        run: flutter pub get
+
+      - name: Uji perhitungan
+        run: flutter test
+
+      - name: Build APK
+        env:
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+          FIREBASE_SENDER_ID: ${{ secrets.FIREBASE_SENDER_ID }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_STORAGE_BUCKET: ${{ secrets.FIREBASE_STORAGE_BUCKET }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+        run: |
+          ARGS="--dart-define=FIREBASE_API_KEY=$FIREBASE_API_KEY \
+            --dart-define=FIREBASE_APP_ID=$FIREBASE_APP_ID \
+            --dart-define=FIREBASE_SENDER_ID=$FIREBASE_SENDER_ID \
+            --dart-define=FIREBASE_PROJECT_ID=$FIREBASE_PROJECT_ID \
+            --dart-define=FIREBASE_STORAGE_BUCKET=$FIREBASE_STORAGE_BUCKET"
+          if [ -n "$GEMINI_MODEL" ]; then ARGS="$ARGS --dart-define=GEMINI_MODEL=$GEMINI_MODEL"; fi
+          if [ -z "$FIREBASE_API_KEY" ]; then echo "::warning::Secret Firebase belum diisi — APK akan berjalan dalam Mode Demo."; fi
+          flutter build apk --release $ARGS
+          cp build/app/outputs/flutter-apk/app-release.apk AI-Driver-Companion.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AI-Driver-Companion-apk
+          path: AI-Driver-Companion.apk
+
+      - name: Terbitkan di halaman Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-${{ github.run_number }}
+          name: AI Driver Companion build ${{ github.run_number }}
+          files: AI-Driver-Companion.apk
+          body: APK otomatis dari commit ${{ github.sha }}. Unduh lalu pasang di HP Android.

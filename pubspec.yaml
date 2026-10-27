@@ -1,0 +1,26 @@
+name: ai_driver_companion
+description: AI Driver Companion — pendamping cerdas untuk pengemudi ojek online, kurir, dan layanan antar.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # Versi "any" = pub memilih versi terbaru yang cocok dengan Flutter Anda.
+  firebase_core: any
+  firebase_auth: any
+  cloud_firestore: any
+  firebase_ai: any
+  flutter_map: any
+  latlong2: any
+  shared_preferences: any
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
